@@ -297,11 +297,14 @@ async function callModel(modelId, candidates) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({provider: m.provider, model: modelVersion, systemPrompt, userPrompt})
     });
+    const rawBody = await r.text();
     if (!r.ok) {
-      const errBody = await r.json().catch(() => ({}));
-      throw new Error(errBody.error || `Worker HTTP ${r.status}`);
+      let errMsg = `Worker HTTP ${r.status}`;
+      try { const j = JSON.parse(rawBody); errMsg = j.error || errMsg; } catch(e) {}
+      throw new Error(errMsg);
     }
-    const d = await r.json();
+    let d;
+    try { d = JSON.parse(rawBody); } catch(e) { throw new Error('Worker returned non-JSON'); }
     if (d.error) throw new Error(d.error);
 
     const text = d.text || '';
