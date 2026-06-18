@@ -263,34 +263,33 @@ const LS={
 
 const st={loading:true,aiLoading:false,err:'',picks:null,history:[],histExpanded:{},showSettings:false,aiStatuses:{},workerModels:null};
 
-// ── AI Prompt Engine ──────────────────────────────────────────────────────────
 function buildPrompts(candidates, hasSearch) {
   const searchInstr = hasSearch 
-    ? "Utilize web search capabilities to verify injuries, roster adjustments, or severe weather conditions that may compromise the mathematical advantage." 
-    : "Rely on your training knowledge of historical matchups, team dynamics, and structural market patterns.";
+    ? "You have web search capabilities. Verify injuries, lineup news, or severe weather conditions that might negatively impact the mathematical edge." 
+    : "Rely on your training data regarding historical matchups, team dynamics, and structural market patterns.";
 
-  const systemPrompt = `You are a quantitative sports analysis model. You operate based on rigorous mathematical principles, devoid of narrative bias.
+  const systemPrompt = `You are a world-class quantitative sports betting algorithm. 
 
-YOUR OBJECTIVE:
-Analyze the provided pool of positive Expected Value (EV+) opportunities. Select the single most optimal selection. Prioritize the mathematical foundation while applying multivariate logic to identify the most robust alpha opportunity. ${searchInstr}
+YOUR TASK:
+Analyze the provided mathematically filtered pool of positive Expected Value (EV+) betting candidates and select the SINGLE absolute best choice. Maintain an analytical approach. ${searchInstr}
 
-Format your response strictly as a JSON object matching this schema. Do not include markdown formatting or secondary text.
+Return ONLY a valid JSON object matching this exact structure. Do not include markdown formatting, code blocks, or extra text.
 {
-  "topPickId": "the exact id string of the selected option",
+  "topPickId": "the exact id string of your chosen best bet",
   "confidence": "HIGH|MEDIUM|LOW",
-  "reasoning": "A rigorous, data-driven defense of this selection. Detail the structural market inefficiency."
+  "reasoning": "Provide a rigorous, data-driven defense of this selection."
 }`;
 
-  const userPrompt = `Candidate Pool:\n${JSON.stringify(candidates.map(c => ({
+  const userPrompt = `Candidates Pool:\n${JSON.stringify(candidates.map(c => ({
     id: c.id, sport: c.sport, game: c.game, bet: c.bet, book: c.book, line: c.line, ev: c.ev, gap: c.gap
   })), null, 2)}`;
 
   return { systemPrompt, userPrompt };
 }
 
-// ── API Core Routing Logic ────────────────────────────────────────────────────
+// ── API Core Routing Logic (Strict Proxy Only) ────────────────────────────────
 async function callModel(model, workerUrl, candidates) {
-  if (!workerUrl) throw new Error("Gateway URL unconfigured.");
+  if (!workerUrl) throw new Error("Worker URL is not configured");
   
   const { systemPrompt, userPrompt } = buildPrompts(candidates, model.hasSearch);
   
@@ -315,32 +314,57 @@ async function callModel(model, workerUrl, candidates) {
     const d = await r.json();
     if (d.error) throw new Error(d.error);
 
-    let result;
+    // Resilient JSON Parsing Logic
+    let result = null;
+    let rawText = "";
+
     if (d.text) {
-      let text = d.text;
-      const jsonStart = text.indexOf('{');
-      const jsonEnd = text.lastIndexOf('}');
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        let jsonStr = text.substring(jsonStart, jsonEnd + 1);
-        result = JSON.parse(jsonStr);
-      } else {
-        throw new Error('Response format validation failed.');
+      rawText = d.text;
+      
+      // Pass 1: Try direct parse (if model respected json_object strictly)
+      try {
+        result = JSON.parse(rawText);
+      } catch (e1) {
+        // Pass 2: Aggressive regex extraction
+        try {
+          const jsonStart = rawText.indexOf('{');
+          const jsonEnd = rawText.lastIndexOf('}');
+          if (jsonStart !== -1 && jsonEnd !== -1) {
+             let jsonStr = rawText.substring(jsonStart, jsonEnd + 1);
+             result = JSON.parse(jsonStr);
+          } else {
+             throw new Error("No JSON structure detected in response bounds.");
+          }
+        } catch (e2) {
+          console.error(`[${model.name} Parse Failure] Raw output:`, rawText);
+          throw new Error('Response format validation failed.');
+        }
       }
     } else {
-      result = d;
+      result = d; // Fallback if worker already parsed it
     }
 
+    // Graceful fallback if the AI forgets the ID or hallucinates a wrong one
     let matchedId = result.topPickId;
     if (!matchedId || !candidates.find(c => c.id === matchedId)) {
+        console.warn(`[${model.name}] Invalid or missing topPickId. Defaulting to highest EV.`);
         matchedId = candidates[0].id; 
     }
     
     return {
       topPickId: matchedId,
       confidence: result.confidence || 'MEDIUM',
-      reasoning: result.reasoning || 'Model identified a structural pricing divergence.',
+      reasoning: result.reasoning || 'Model identified a structural edge in market pricing.',
+      picks: candidates.map(c => ({
+        id: c.id,
+        rank: c.id === matchedId ? 1 : 99,
+        confidence: c.id === matchedId ? (result.confidence || 'MEDIUM') : 'PASS',
+        reasoning: c.id === matchedId ? result.reasoning : '',
+        note: ''
+      }))
     };
   } catch(e) {
+    // Explicitly rethrow so runAllModels can catch the exact string and put it on the dashboard
     throw e;
   }
 }
@@ -527,7 +551,7 @@ function rHero(pick, endorsements, isConsensus) {
 
   const reasoningHtml = endorsements.map(e => `
     <div class="reasoning">
-      <span style="font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--ac);font-style:normal;display:block;margin-bottom:6px">${esc(e.modelName)} Analysis</span>
+      <span style="font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:var(--ac);font-style:normal;display:block;margin-bottom:6px">${e.modelName} Analysis</span>
       ${esc(e.reasoning)}
     </div>
   `).join('');
