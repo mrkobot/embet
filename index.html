@@ -8,7 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root{
-       Grimm-bg:#f7f8fc;--sf:#fff;--bd:rgba(0,0,0,.09);--bdm:rgba(0,0,0,.15);
+        Grimm-bg:#f7f8fc;--sf:#fff;--bd:rgba(0,0,0,.09);--bdm:rgba(0,0,0,.15);
       --bg:#f7f8fc;
       --t:#111827;--t2:#6b7280;--t3:#9ca3af;
       --ac:#3b5bdb;--acbg:#eef2ff;--acbd:rgba(59,91,219,.25);
@@ -948,7 +948,7 @@ function processOdds(games){
       const pinMkt=pin?.markets?.find(m=>m.key===mKey);
       let fairMap=null;
       
-      if(pinMkt?.outcomes && PINNACLE_DEEP.has(g.sport)){
+      if(pinMkt?.outcomes && PINNACLE_DEEP.has(g.sport_key)){
         fairMap=calcPinnacleFair(pinMkt.outcomes);
       } else {
         fairMap=calcConsensusFair(g.bookmakers,mKey);
@@ -975,10 +975,10 @@ function processOdds(games){
             if(candidates.find(c=>c.id===pId)) continue;
 
             candidates.push({
-              id:pId, sport:g.sport.replace(/[^a-z0-9_]/g,''), game:`${g.home_team} vs ${g.away_team}`,
+              id:pId, sport:g.sport_key.replace(/[^a-z0-9_]/g,''), game:`${g.home_team} vs ${g.away_team}`,
               commenceTime:g.commence_time, mkt:mLabel, bet:bLabel, book:bm.title||bm.key,
               line:out.price, bookImplied:iP(out.price), fair:fairProb, ev:ev, gap:fairProb-iP(out.price),
-              method:PINNACLE_DEEP.has(g.sport)&&pin?'sharp':'consensus',
+              method:PINNACLE_DEEP.has(g.sport_key)&&pin?'sharp':'consensus',
               booksInPool:fairMap._poolSize||0
             });
           }
