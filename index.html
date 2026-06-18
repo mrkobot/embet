@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>emBET // v2 Quantum Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap');
+    body { font-family: 'JetBrains Mono', monospace; background-color: #0a0a0c; color: #e4e4e7; }
+    .neon-border { border: 1px solid rgba(255, 255, 255, 0.08); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    .neon-border:hover { border-color: rgba(255, 255, 255, 0.2); box-shadow: 0 0 20px rgba(255, 255, 255, 0.02); }
+    .hidden-panel { display: none !important; }
+    /* Custom thin scrollbar for the tutorial panel */
+    .custom-scroll::-webkit-scrollbar { width: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #121215; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #27272a; border-radius: 2px; }
+  </style>
+</head>
+<body class="p-6 min-h-screen flex flex-col justify-between">
+
+  <!-- ONBOARDING GATEKEEPER OVERLAY -->
+  <div id="onboarding-gate" class="fixed inset-0 bg-[#0a0a0c] z-50 flex items-center justify-center p-4 hidden-panel">
+    <div class="bg-[#121215] border border-zinc-800 p-8 rounded-xl max-w-xl w-full shadow-2xl max-h-[90vh] flex flex-col justify-between">
+      <div class="overflow-y-auto custom-scroll pr-1 space-y-5">
+        <div>
+          <h2 class="text-xl font-bold tracking-wider text-white">emBET // ENGINE INITIALIZATION</h2>
+          <p class="text-xs text-zinc-400 mt-1 font-light">System initialization required. Provide pipeline endpoints to configure local engine parameters.</p>
+        </div>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-[10px] uppercase tracking-widest text-zinc-500 mb-2 font-bold">1. The Odds API Key</label>
+            <input type="text" id="init-odds-key" placeholder="Enter production data key (e.g., a8b7c6...)" class="w-full bg-[#18181c] border border-zinc-800 p-3 text-xs text-white rounded font-mono focus:outline-none focus:border-zinc-600 transition">
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-widest text-zinc-500 mb-2 font-bold">2. Cloudflare Worker URL (Optional AI Instance)</label>
+            <input type="url" id="init-worker-url" placeholder="https://your-worker.username.workers.dev" class="w-full bg-[#18181c] border border-zinc-800 p-3 text-xs text-white rounded font-mono focus:outline-none focus:border-zinc-600 transition">
+            <p class="text-[10px] text-zinc-500 mt-1">Leave empty to initialize system in pure Quant-Only mode.</p>
+          </div>
+        </div>
+
+        <!-- EXPANDABLE CLOUDFLARE INSTRUCTION EXPANSION -->
+        <div class="border border-zinc-800/60 rounded bg-[#16161a]">
+          <button onclick="toggleTutorial()" class="w-full text-left p-3 flex justify-between items-center text-xs text-zinc-400 hover:text-white transition font-bold uppercase tracking-wider">
+            <span>❓ Need help setting up your Cloudflare Worker?</span>
+            <span id="tutorial-arrow" class="text-zinc-600 transition-transform duration-200">▶</span>
+          </button>
+          
+          <div id="tutorial-content" class="hidden-panel p-4 pt-0 border-t border-zinc-800/40 text-xs text-zinc-400 space-y-3 font-light leading-relaxed">
+            <p class="border-b border-zinc-800 pb-2 text-zinc-500 text-[11px]">Deploy a secure, free API firewall to protect your AI keys in under 5 minutes:</p>
+            <p><strong>1. Sign Up Free:</strong> Create a standard free tier profile at <a href="https://dash.cloudflare.com/sign-up" target="_blank" class="text-blue-400 underline hover:text-blue-300">dash.cloudflare.com</a>.</p>
+            <p><strong>2. Deploy Worker:</strong> Go to <em>Workers & Pages</em> &rarr; <em>Create Application</em> &rarr; <em>Create Worker</em>. Choose <strong>"From Hello World"</strong> and click <strong>Deploy</strong>.</p>
+            <p><strong>3. Edit Script:</strong> Click <strong>Edit Code</strong>. Wipe out all placeholder lines completely, paste your core pipeline script into line 1, and click <strong>Save and Deploy</strong>.</p>
+            <p><strong>4. Add Keys:</strong> Exit the editor back to the worker dashboard. Go to <em>Settings</em> &rarr; <em>Variables</em> &rarr; <em>Environment Variables</em>. Click <strong>Add variable</strong> and add entries using these exact names (All Caps):</p>
+            <ul class="list-disc list-inside space-y-1 font-mono text-[11px] text-zinc-300 pl-2">
+              <li><span class="text-zinc-500 font-bold">`ANTHROPIC_KEY`</span>: Your Claude Token</li>
+              <li><span class="text-zinc-500 font-bold">`OPENAI_KEY`</span>: Your OpenAI Token</li>
+              <li><span class="text-zinc-500 font-bold">`GEMINI_KEY`</span>: Your Google Gemini Token</li>
+              <li><span class="text-zinc-500 font-bold">`DEEPSEEK_KEY`</span>: Your DeepSeek Token</li>
+            </ul>
+            <p class="text-zinc-500 text-[10px] italic">Only add lines for models you actually want to use. Leave the rest blank!</p>
+            <p><strong>5. Fetch Live URL:</strong> Head back to your worker's <em>Overview</em> tab. Copy the web address under <strong>Live URL</strong> on the right side. Paste that text block into Slot 2 above.</p>
+          </div>
+        </div>
+      </div>
+
+      <button id="btn-initialize" class="w-full bg-white hover:bg-zinc-200 text-black text-xs uppercase tracking-widest font-bold py-4 rounded transition duration-200 mt-6 shrink-0">Initialize Core Engine</button>
+    </div>
+  </div>
+
+  <!-- APPLICATION CORE HEAD -->
+  <header class="max-w-6xl w-full mx-auto flex justify-between items-center border-b border-zinc-900 pb-4 mb-6">
+    <div>
+      <h1 class="text-lg font-bold tracking-tighter text-white">emBET // v2.0</h1>
+      <p class="text-xs text-zinc-500" id="engine-status">Detecting pipeline routes...</p>
+    </div>
+    <div class="flex items-center gap-4">
+      <button onclick="clearSystemMemory()" class="text-zinc-600 hover:text-red-400 text-xs tracking-wider transition font-light">RESET ENGINE</button>
+    </div>
+  </header>
+
+  <!-- WORKSPACE ARCHITECTURE -->
+  <main class="max-w-6xl w-full mx-auto flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6">
+    
+    <!-- LEFT & CENTER COLUMN: DYNAMIC OPPORTUNITY WORKSPACE -->
+    <section class="lg:col-span-2 space-y-6">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs uppercase tracking-widest text-zinc-400 font-bold">Alpha Signals</h3>
+        <button onclick="triggerMarketScan()" class="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[10px] uppercase tracking-wider font-bold px-4 py-2 rounded transition">Scan Markets</button>
+      </div>
+      
+      <!-- Opportunity Mount Point -->
+      <div id="signals-container" class="space-y-4">
+        <div class="text-xs text-zinc-500 italic p-8 text-center border border-dashed border-zinc-900 rounded">Initialize pipeline scan to populate live opportunities.</div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: AI LEADERBOARD & CONTROL MATRIX -->
+    <section id="ai-matrix-panel" class="space-y-6">
+      <h3 class="text-xs uppercase tracking-widest text-zinc-400 font-bold">AI Intelligence Matrix</h3>
+      
+      <div class="bg-[#121215] border border-zinc-900 rounded p-4 space-y-4">
+        <div class="flex justify-between text-[11px] text-zinc-500 font-bold uppercase tracking-wider pb-2 border-b border-zinc-900">
+          <span>Model Endpoint</span>
+          <span>Status</span>
+        </div>
+        <div id="leaderboard-rows" class="space-y-2 text-xs">
+          <!-- Dynamically generated rows live here -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ARCHITECTURE JAVASCRIPT ENGINE -->
+  <script>
+    let ACTIVE_MODELS = [];
+    let analysisCache = {}; // Global storage to hold raw analysis outputs
+
+    document.addEventListener("DOMContentLoaded", () => {
+      checkSystemInitialization();
+    });
+
+    function toggleTutorial() {
+      const el = document.getElementById("tutorial-content");
+      const arrow = document.getElementById("tutorial-arrow");
+      if (el.classList.contains("hidden-panel")) {
+        el.classList.remove("hidden-panel");
+        arrow.innerText = "▼";
+      } else {
+        el.classList.add("hidden-panel");
+        arrow.innerText = "▶";
+      }
+    }
+
+    function checkSystemInitialization() {
+      const oddsKey = localStorage.getItem("embet_odds_key");
+      const workerUrl = localStorage.getItem("embet_worker_url");
+
+      if (!oddsKey) {
+        document.getElementById("onboarding-gate").classList.remove("hidden-panel");
+        document.getElementById("btn-initialize").addEventListener("click", saveInitialization);
+      } else {
+        document.getElementById("onboarding-gate").classList.add("hidden-panel");
+        syncIntelligenceGateway(workerUrl);
+      }
+    }
+
+    function saveInitialization() {
+      const oddsKey = document.getElementById("init-odds-key").value.trim();
+      let workerUrl = document.getElementById("init-worker-url").value.trim();
+
+      if (!oddsKey) {
+        alert("The Odds API Key is strictly required to power the mathematical mapping layer.");
+        return;
+      }
+
+      // Sanitize URL if user accidental left trailing slash
+      if (workerUrl.endsWith("/")) workerUrl = workerUrl.slice(0, -1);
+
+      localStorage.setItem("embet_odds_key", oddsKey);
+      if (workerUrl) localStorage.setItem("embet_worker_url", workerUrl);
+
+      document.getElementById("onboarding-gate").classList.add("hidden-panel");
+      syncIntelligenceGateway(workerUrl);
+    }
+
+    async function syncIntelligenceGateway(url) {
+      const statusEl = document.getElementById("engine-status");
+      const matrixPanel = document.getElementById("ai-matrix-panel");
+      const rowContainer = document.getElementById("leaderboard-rows");
+
+      if (!url) {
+        statusEl.innerText = "Quant-Only Mode // AI Intelligence Pipeline Offline";
+        matrixPanel.classList.add("hidden-panel");
+        return;
+      }
+
+      statusEl.innerText = "Synchronizing backend AI gateway parameters...";
+      try {
+        const response = await fetch(`${url}/api/config`);
+        const data = await response.json();
+        ACTIVE_MODELS = data.activeModels || [];
+
+        if (ACTIVE_MODELS.length === 0) {
+          statusEl.innerText = "Connected to Worker // 0 AI Keys Detected (Quant Mode)";
+          matrixPanel.classList.add("hidden-panel");
+          return;
+        }
+
+        statusEl.innerText = `Engine Online // ${ACTIVE_MODELS.length} Core AI Nodes Active`;
+        matrixPanel.classList.remove("hidden-panel");
+        
+        rowContainer.innerHTML = ACTIVE_MODELS.map(model => `
+          <div class="flex justify-between items-center py-2 border-b border-zinc-900/40">
+            <span class="capitalize font-bold text-zinc-300">${model}</span>
+            <span class="text-[10px] uppercase bg-zinc-900 px-2 py-0.5 rounded text-zinc-400 font-light tracking-widest">Awaiting Scan</span>
+          </div>
+        `).join('');
+
+      } catch (e) {
+        statusEl.innerText = "Gateway Connection Fault. Operating in local Quant-Only fallback.";
+        matrixPanel.classList.add("hidden-panel");
+        ACTIVE_MODELS = [];
+      }
+    }
+
+    function triggerMarketScan() {
+      const container = document.getElementById("signals-container");
+      container.innerHTML = `<div class="text-xs text-zinc-400 animate-pulse">Running market matching mechanics and mapping pricing boards...</div>`;
+
+      // Simulating a real multi-book edge discovered by the math engine
+      setTimeout(() => {
+        const mockOpportunities = [
+          {
+            id: "play_01",
+            sport: "MLB",
+            matchup: "New York Yankees vs Boston Red Sox",
+            market: "Moneyline (h2h)",
+            pick: "New York Yankees",
+            bestOdds: "DraftKings (-120)",
+            ev: "+4.25%",
+            fairOdds: "-135"
+          }
+        ];
+
+        renderOpportunities(mockOpportunities);
+      }, 800);
+    }
+
+    function renderOpportunities(opportunities) {
+      const container = document.getElementById("signals-container");
+      if (opportunities.length === 0) {
+        container.innerHTML = `<div class="text-xs text-zinc-500 italic text-center p-8">No positive expected-value inefficiencies found.</div>`;
+        return;
+      }
+
+      container.innerHTML = opportunities.map(opp => {
+        const isAiActive = ACTIVE_MODELS.length > 0;
+        
+        return `
+          <div class="bg-[#121215] neon-border p-6 rounded-lg space-y-4" id="card-${opp.id}">
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="flex gap-2 items-center mb-1">
+                  <span class="bg-zinc-900 text-zinc-400 text-[9px] uppercase tracking-widest px-2 py-0.5 rounded font-bold">${opp.sport}</span>
+                  <span class="text-emerald-400 text-xs font-bold">${opp.ev} EV Opportunity</span>
+                </div>
+                <h4 class="text-sm font-bold text-white tracking-tight">${opp.matchup}</h4>
+                <p class="text-xs text-zinc-400 mt-1">Target Play: <span class="text-white font-bold">${opp.pick}</span> @ ${opp.bestOdds}</p>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-zinc-500 block uppercase tracking-wider">Estimated Fair Valuation</span>
+                <span class="text-xs font-bold text-zinc-300">${opp.fairOdds}</span>
+              </div>
+            </div>
+
+            ${isAiActive ? `
+              <div class="border-t border-zinc-900/60 pt-4 space-y-3">
+                <div class="flex gap-2 flex-wrap" id="matrix-grid-${opp.id}">
+                  ${ACTIVE_MODELS.map((model, idx) => `
+                    <button onclick="focusModelAnalysis('${opp.id}', '${model}')" id="btn-${opp.id}-${model}" class="bg-zinc-900 hover:bg-zinc-800 text-[10px] uppercase font-bold px-3 py-1.5 rounded tracking-wider text-zinc-500 transition">
+                      ${model}: <span id="status-${opp.id}-${model}">Processing...</span>
+                    </button>
+                  `).join('')}
+                </div>
+                <div class="bg-[#16161a] border border-zinc-900 rounded p-3 text-xs text-zinc-400 font-light leading-relaxed min-h-[50px]" id="reasoning-box-${opp.id}">
+                  Assembling intelligence consensus matrix...
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      if (ACTIVE_MODELS.length > 0) {
+        opportunities.forEach(opp => runDecentralizedAnalysis(opp));
+      }
+    }
+
+    async function runDecentralizedAnalysis(opp) {
+      analysisCache[opp.id] = {};
+      const url = localStorage.getItem("embet_worker_url");
+
+      ACTIVE_MODELS.forEach(async (model, index) => {
+        try {
+          const response = await fetch(`${url}/api/analyze`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: model, marketData: opp })
+          });
+          
+          const data = await response.json();
+          analysisCache[opp.id][model] = data;
+
+          const badgeStatus = document.getElementById(`status-${opp.id}-${model}`);
+          if (badgeStatus) {
+            badgeStatus.innerText = data.confidence;
+            badgeStatus.parentElement.classList.remove('text-zinc-500');
+            
+            if (data.confidence === "HIGH") badgeStatus.parentElement.classList.add('text-emerald-400');
+            else if (data.confidence === "MEDIUM") badgeStatus.parentElement.classList.add('text-yellow-500');
+            else if (data.confidence === "LOW") badgeStatus.parentElement.classList.add('text-orange-400');
+            else badgeStatus.parentElement.classList.add('text-zinc-400');
+          }
+
+          // Automatically focus on the first configured model's layout once data lands
+          if (index === 0) {
+            focusModelAnalysis(opp.id, model);
+          }
+
+        } catch (err) {
+          const badgeStatus = document.getElementById(`status-${opp.id}-${model}`);
+          if (badgeStatus) badgeStatus.innerText = "OFFLINE";
+        }
+      });
+    }
+
+    function focusModelAnalysis(oppId, selectedModel) {
+      ACTIVE_MODELS.forEach(model => {
+        const btn = document.getElementById(`btn-${oppId}-${model}`);
+        if (btn) btn.classList.remove('border', 'border-zinc-700', 'bg-zinc-800');
+      });
+
+      const activeBtn = document.getElementById(`btn-${oppId}-${selectedModel}`);
+      if (activeBtn) activeBtn.classList.add('border', 'border-zinc-700', 'bg-zinc-800');
+
+      const textBox = document.getElementById(`reasoning-box-${oppId}`);
+      if (analysisCache[oppId] && analysisCache[oppId][selectedModel]) {
+        textBox.innerHTML = `<strong class="text-zinc-200 capitalize">${selectedModel}:</strong> "${analysisCache[oppId][selectedModel].reasoning}"`;
+      } else {
+        textBox.innerText = `Establishing data pipeline response for ${selectedModel}...`;
+      }
+    }
+
+    function clearSystemMemory() {
+      if (confirm("De-authorize current key signatures and clear local storage values?")) {
+        localStorage.clear();
+        window.location.reload();
+      }
+    }
+  </script>
+</body>
+</html>
