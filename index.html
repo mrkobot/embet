@@ -321,9 +321,9 @@ async function callModel(modelId, candidates) {
       confidence: result.confidence || 'MEDIUM',
       reasoning: result.reasoning || ''
     };
-  } catch(e) {
+ } catch(e) {
     console.warn(`[${m.name}] failed:`, e.message);
-    return null;
+    throw e;
   }
 }
 
