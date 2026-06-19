@@ -343,7 +343,7 @@ function cleanAndParseJSON(rawText) {
   return JSON.parse(match[0]);
 }
 
-const AI_TIMEOUT_MS = 60000; // 28s was right for non-reasoning GPT-4o; GPT-5.5 (reasoning) + live search needs more room — abort a truly stalled call rather than leaving the user guessing
+const AI_TIMEOUT_MS = 90000; // 28s was right for non-reasoning GPT-4o; GPT-5.5 (reasoning) + live search needs more room — abort a truly stalled call rather than leaving the user guessing
 
 // ── Model callers — all AI calls route through the Worker ─────────────────────
 // Always either resolves with a valid result or throws — never returns null.
